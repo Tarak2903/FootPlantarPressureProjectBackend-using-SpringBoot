@@ -6,6 +6,7 @@ import com.example.demo.entity.UserEntity;
 import com.example.demo.exception.BadCredentialsException;
 import com.example.demo.exception.LogicException;
 import com.example.demo.repository.UserRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,12 +15,16 @@ import java.util.Objects;
 @Service
 public class UserService {
     private final UserRepository userRepository;
-    public UserService(UserRepository userRepository){this.userRepository=userRepository;}
+    private final BCryptPasswordEncoder encoder;
+    public UserService(UserRepository userRepository, BCryptPasswordEncoder encoder){
+        this.userRepository=userRepository;
+        this.encoder=encoder;
+    }
 
 
     public UserResponseDto addUser(UserSignUpRequest user){
         if(userRepository.findByUserName(user.getUserName())!=null)throw new LogicException("User already Exist");
-        UserEntity userEntity=new UserEntity(user.getUserName(),user.getPassword());
+        UserEntity userEntity=new UserEntity(user.getUserName(),encoder.encode(user.getPassword()),user.getRole());
         userRepository.save(userEntity);
         return new UserResponseDto(user.getUserName());
     }

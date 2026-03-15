@@ -1,0 +1,54 @@
+package com.example.demo.config;
+
+import com.example.demo.service.myUserDetailService;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+    private final myUserDetailService myService;
+    public SecurityConfig(myUserDetailService myService){this.myService=myService;}
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity){
+       return  httpSecurity
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth->
+                        auth.requestMatchers("/user/*")
+                                .permitAll()
+                                .anyRequest().
+                                authenticated()
+
+                )
+                .httpBasic(Customizer.withDefaults())
+                .build();
+    }
+
+    @Bean
+    public  BCryptPasswordEncoder bCryptPasswordEncoder(){return new BCryptPasswordEncoder();}
+
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config){
+        System.out.println("Hello i am in Authentication Manager");
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(){
+        DaoAuthenticationProvider provider= new DaoAuthenticationProvider(myService);
+        provider.setPasswordEncoder(new BCryptPasswordEncoder());
+        return provider;
+    }
+
+}

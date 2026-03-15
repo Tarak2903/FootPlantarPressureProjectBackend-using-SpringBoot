@@ -1,9 +1,7 @@
 package com.example.demo.entity;
- import jakarta.persistence.Entity;
+ import com.example.demo.enums.Role;
+ import jakarta.persistence.*;
 
- import jakarta.persistence.GeneratedValue;
- import jakarta.persistence.GenerationType;
- import jakarta.persistence.Id;
  import jakarta.validation.constraints.Email;
  import jakarta.validation.constraints.NotNull;
  import lombok.AllArgsConstructor;
@@ -23,9 +21,12 @@ public class UserEntity {
     private String userName;
     @NotNull
     private String password;
-    public UserEntity(String userName,String password){
+    @Enumerated(EnumType.STRING)
+    private Role role;
+    public UserEntity(String userName,String password,Role role){
         this.userName=userName;
         this.password=password;
+        this.role=role;
     }
 
 }

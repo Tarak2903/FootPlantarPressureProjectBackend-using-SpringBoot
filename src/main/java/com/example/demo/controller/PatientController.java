@@ -26,4 +26,7 @@ public class PatientController {
         return new ResponseEntity<>(patientService.processFile(patientRequest),HttpStatus.OK);
     }
 
+    @GetMapping("/h")
+    public String getHello(){return "Lesgoooooo";}
+
 }
