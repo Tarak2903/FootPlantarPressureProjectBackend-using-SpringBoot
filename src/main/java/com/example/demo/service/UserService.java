@@ -6,6 +6,9 @@ import com.example.demo.entity.UserEntity;
 import com.example.demo.exception.BadCredentialsException;
 import com.example.demo.exception.LogicException;
 import com.example.demo.repository.UserRepository;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +19,12 @@ import java.util.Objects;
 public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder encoder;
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder encoder){
+    private final AuthenticationManager authManager;
+    public UserService(UserRepository userRepository,
+                       BCryptPasswordEncoder encoder,AuthenticationManager authManager){
         this.userRepository=userRepository;
         this.encoder=encoder;
+        this.authManager=authManager;
     }
 
 
@@ -29,11 +35,13 @@ public class UserService {
         return new UserResponseDto(user.getUserName());
     }
 
-    public UserLoginResponse signIn(UserSignUpRequest user){
-        UserEntity realUser= userRepository.findByUserName(user.getUserName());
-        if(realUser==null)throw new BadCredentialsException("Invalid Credentials");
-        if (!realUser.getPassword().equals(user.getPassword()))throw new BadCredentialsException("Invalid Credentials");
-        return new UserLoginResponse("User Successfully Authenticated");
+    public String signIn(UserSignUpRequest user){
+        Authentication auth= authManager.authenticate
+                (new UsernamePasswordAuthenticationToken(user.getUserName(),user.getPassword()));
+        if(!auth.isAuthenticated())throw new BadCredentialsException("Invalid Credentials");
+
+        return "Done";
+
     }
 
 

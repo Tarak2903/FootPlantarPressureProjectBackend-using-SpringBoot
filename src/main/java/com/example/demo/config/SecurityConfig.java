@@ -40,7 +40,6 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config){
-        System.out.println("Hello i am in Authentication Manager");
         return config.getAuthenticationManager();
     }
 
