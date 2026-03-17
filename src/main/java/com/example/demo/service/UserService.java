@@ -1,5 +1,4 @@
 package com.example.demo.service;
-import com.example.demo.dto.UserLoginResponse;
 import com.example.demo.dto.UserSignUpRequest;
 import com.example.demo.dto.UserResponseDto;
 import com.example.demo.entity.UserEntity;
@@ -13,18 +12,19 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Objects;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder encoder;
     private final AuthenticationManager authManager;
+    private final JwtService jwtService;
     public UserService(UserRepository userRepository,
-                       BCryptPasswordEncoder encoder,AuthenticationManager authManager){
+                       BCryptPasswordEncoder encoder,AuthenticationManager authManager,JwtService jwtService){
         this.userRepository=userRepository;
         this.encoder=encoder;
         this.authManager=authManager;
+        this.jwtService=jwtService;
     }
 
 
@@ -39,14 +39,14 @@ public class UserService {
         Authentication auth= authManager.authenticate
                 (new UsernamePasswordAuthenticationToken(user.getUserName(),user.getPassword()));
         if(!auth.isAuthenticated())throw new BadCredentialsException("Invalid Credentials");
-
-        return "Done";
+        System.out.println("Signin is working");
+        return jwtService.generateToken(user.getUserName());
 
     }
 
 
     public List<UserEntity> getUsers(){
-        return userRepository.findAll();
+        return  userRepository.findAll();
     }
 
 }

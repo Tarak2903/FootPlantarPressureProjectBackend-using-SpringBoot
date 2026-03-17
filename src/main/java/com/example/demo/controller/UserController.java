@@ -32,7 +32,7 @@ public class UserController {
     }
 
 
-    @GetMapping
+    @GetMapping("/get")
     public List<UserEntity> getUsers(){
             return userService.getUsers();
     }
