@@ -1,4 +1,5 @@
 package com.example.demo.service;
+import com.example.demo.dto.UserSignInRequest;
 import com.example.demo.dto.UserSignUpRequest;
 import com.example.demo.dto.UserResponseDto;
 import com.example.demo.entity.UserEntity;
@@ -35,11 +36,11 @@ public class UserService {
         return new UserResponseDto(user.getUserName());
     }
 
-    public String signIn(UserSignUpRequest user){
+    public String signIn(UserSignInRequest user){
         Authentication auth= authManager.authenticate
                 (new UsernamePasswordAuthenticationToken(user.getUserName(),user.getPassword()));
         if(!auth.isAuthenticated())throw new BadCredentialsException("Invalid Credentials");
-        System.out.println("Signin is working");
+
         return jwtService.generateToken(user.getUserName());
 
     }

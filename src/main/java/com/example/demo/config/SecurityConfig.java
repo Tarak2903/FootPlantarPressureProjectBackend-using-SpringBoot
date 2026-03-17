@@ -1,5 +1,6 @@
 package com.example.demo.config;
 
+import com.example.demo.filter.JwtFilter;
 import com.example.demo.service.myUserDetailService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,12 +14,17 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
     private final myUserDetailService myService;
-    public SecurityConfig(myUserDetailService myService){this.myService=myService;}
+    private final JwtFilter jwtFilter;
+    public SecurityConfig(myUserDetailService myService ,JwtFilter jwtFilter){
+        this.myService=myService;
+        this.jwtFilter=jwtFilter;
+    }
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity){
        return  httpSecurity
@@ -30,6 +36,7 @@ public class SecurityConfig {
                                 authenticated()
 
                 )
+               .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(Customizer.withDefaults())
                 .build();
     }

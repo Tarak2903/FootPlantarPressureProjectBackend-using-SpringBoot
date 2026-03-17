@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 
 import com.example.demo.dto.UserLoginResponse;
+import com.example.demo.dto.UserSignInRequest;
 import com.example.demo.dto.UserSignUpRequest;
 import com.example.demo.dto.UserResponseDto;
 import com.example.demo.entity.UserEntity;
@@ -27,7 +28,7 @@ public class UserController {
     }
 
     @PostMapping("/Login")
-    public ResponseEntity<String> Login(@RequestBody UserSignUpRequest user){
+    public ResponseEntity<String> Login(@RequestBody UserSignInRequest user){
             return new ResponseEntity<>(userService.signIn(user),HttpStatus.ACCEPTED);
     }
 
