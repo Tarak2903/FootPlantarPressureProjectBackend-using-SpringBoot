@@ -3,9 +3,9 @@ package com.example.demo.dto;
 import lombok.Data;
 
 @Data
-public class PatientResponseDto {
+public class PatientResponse {
     private double lmean,rmean,avg;
-    public PatientResponseDto(Double lmean,Double rmean,Double avg ){
+    public PatientResponse(Double lmean, Double rmean, Double avg ){
         this.lmean=lmean;
         this.rmean=rmean;
         this.avg=avg;

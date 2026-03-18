@@ -1,7 +1,7 @@
 package com.example.demo.exception;
 
 
-import com.example.demo.dto.ErrorResponseDto;
+import com.example.demo.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -12,25 +12,25 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(LogicException.class)
-    private ResponseEntity<ErrorResponseDto> existingUserConflict(LogicException ex ){
-        return new ResponseEntity<>( new ErrorResponseDto(ex.getMessage()),
+    private ResponseEntity<ErrorResponse> existingUserConflict(LogicException ex ){
+        return new ResponseEntity<>( new ErrorResponse(ex.getMessage()),
                 HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    private ResponseEntity<ErrorResponseDto> UserNotFoundError(BadCredentialsException e){
-        return new ResponseEntity<>(new ErrorResponseDto(e.getMessage()),
+    private ResponseEntity<ErrorResponse> UserNotFoundError(BadCredentialsException e){
+        return new ResponseEntity<>(new ErrorResponse(e.getMessage()),
                 HttpStatus.UNAUTHORIZED);
     }
     @ExceptionHandler(FileProcessingException.class)
-    private ResponseEntity<ErrorResponseDto> FileError(FileProcessingException e){
-        return new ResponseEntity<>(new ErrorResponseDto(e.getMessage()),
+    private ResponseEntity<ErrorResponse> FileError(FileProcessingException e){
+        return new ResponseEntity<>(new ErrorResponse(e.getMessage()),
                 HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(PatientNotFoundException.class)
-    private ResponseEntity<ErrorResponseDto> FileError(PatientNotFoundException e){
-        return new ResponseEntity<>(new ErrorResponseDto(e.getMessage()),
+    private ResponseEntity<ErrorResponse> FileError(PatientNotFoundException e){
+        return new ResponseEntity<>(new ErrorResponse(e.getMessage()),
                 HttpStatus.NOT_FOUND);
     }
 

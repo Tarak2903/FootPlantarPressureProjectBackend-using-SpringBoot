@@ -1,7 +1,7 @@
 package com.example.demo.service;
-import com.example.demo.dto.UserSignInRequest;
-import com.example.demo.dto.UserSignUpRequest;
-import com.example.demo.dto.UserResponseDto;
+import com.example.demo.dto.UserLoginRequest;
+import com.example.demo.dto.UserRegisterRequest;
+import com.example.demo.dto.UserRegisterResponse;
 import com.example.demo.entity.UserEntity;
 import com.example.demo.exception.BadCredentialsException;
 import com.example.demo.exception.LogicException;
@@ -29,14 +29,14 @@ public class UserService {
     }
 
 
-    public UserResponseDto addUser(UserSignUpRequest user){
+    public UserRegisterResponse addUser(UserRegisterRequest user){
         if(userRepository.findByUserName(user.getUserName())!=null)throw new LogicException("User already Exist");
         UserEntity userEntity=new UserEntity(user.getUserName(),encoder.encode(user.getPassword()),user.getRole());
         userRepository.save(userEntity);
-        return new UserResponseDto(user.getUserName());
+        return new UserRegisterResponse(user.getUserName());
     }
 
-    public String signIn(UserSignInRequest user){
+    public String signIn(UserLoginRequest user){
         Authentication auth= authManager.authenticate
                 (new UsernamePasswordAuthenticationToken(user.getUserName(),user.getPassword()));
         if(!auth.isAuthenticated())throw new BadCredentialsException("Invalid Credentials");
