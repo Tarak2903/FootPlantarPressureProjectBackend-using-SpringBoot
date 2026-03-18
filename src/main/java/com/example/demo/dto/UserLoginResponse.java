@@ -8,11 +8,11 @@ import java.time.LocalDateTime;
 @Data
 public class UserLoginResponse {
 
-    private String message;
+    private String token;
     LocalDateTime time;
 
-   public  UserLoginResponse(String message){
-        this.message=message;
+   public  UserLoginResponse(String token){
+        this.token=token;
         time=LocalDateTime.now();
     }
 

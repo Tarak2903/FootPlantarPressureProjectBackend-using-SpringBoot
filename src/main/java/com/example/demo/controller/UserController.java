@@ -28,8 +28,8 @@ public class UserController {
     }
 
     @PostMapping("/Login")
-    public ResponseEntity<String> Login(@RequestBody UserSignInRequest user){
-            return new ResponseEntity<>(userService.signIn(user),HttpStatus.ACCEPTED);
+    public ResponseEntity<UserLoginResponse> Login(@RequestBody UserSignInRequest user){
+            return new ResponseEntity<>(new UserLoginResponse(userService.signIn(user)),HttpStatus.ACCEPTED);
     }
 
 
