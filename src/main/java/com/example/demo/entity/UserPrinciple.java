@@ -14,7 +14,7 @@ public class UserPrinciple implements UserDetails {
     public UserPrinciple(UserEntity user){this.user=user;}
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("role"+user.getRole().name()));
+        return List.of(new SimpleGrantedAuthority("ROLE_"+user.getRole().name()));
     }
 
     @Override

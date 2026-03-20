@@ -13,7 +13,7 @@ import java.util.List;
 public class AdminController {
     private final AdminService adminService;
     public AdminController(AdminService adminService){this.adminService=adminService;}
-    @GetMapping
+    @GetMapping("/get")
     public ResponseEntity<List<UserEntity>>getUsers(){
         return new ResponseEntity<>(adminService.getAll(), HttpStatus.OK);
     }
