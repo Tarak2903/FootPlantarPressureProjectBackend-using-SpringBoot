@@ -33,6 +33,10 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(new ErrorResponse(e.getMessage()),
                 HttpStatus.NOT_FOUND);
     }
-
+    @ExceptionHandler(UserNotFoundException.class)
+    private ResponseEntity<ErrorResponse> FileError(UserNotFoundException e){
+        return new ResponseEntity<>(new ErrorResponse(e.getMessage()),
+                HttpStatus.NOT_FOUND);
+    }
 
 }

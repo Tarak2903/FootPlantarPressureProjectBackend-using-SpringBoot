@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<UserEntity,Long> {
     UserEntity findByUserName(String userName);
     List<UserEntity>findAll();
+    Optional<UserEntity> findById(Long id);
 }
