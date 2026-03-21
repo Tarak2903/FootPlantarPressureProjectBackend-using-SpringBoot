@@ -10,4 +10,5 @@ public class UserRegisterRequest {
     private String password;
     private Role role;
 
+
 }
