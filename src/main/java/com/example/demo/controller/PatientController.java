@@ -23,7 +23,7 @@ public class PatientController {
     }
 
     @PostMapping
-    public ResponseEntity<PatientResponse> addNewPatient(@ModelAttribute PatientRequest patientRequest) throws IOException {
+    public ResponseEntity<com.example.demo.dto.PressureResponse> addNewPatient(@ModelAttribute PatientRequest patientRequest) throws IOException {
 
         return new ResponseEntity<>(patientService.processFile(patientRequest),HttpStatus.OK);
     }

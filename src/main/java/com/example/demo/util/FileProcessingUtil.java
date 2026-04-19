@@ -8,9 +8,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 
+import com.example.demo.dto.PressureResponse;
+
 public class FileProcessingUtil {
 
-    public static List<Double> filProcessor(MultipartFile file) {
+    public static PressureResponse filProcessor(MultipartFile file) {
         double lmean = 0.0, rmean = 0.0, avg;
         double[] pressurePoints;
         try {
@@ -48,6 +50,14 @@ public class FileProcessingUtil {
             throw new FileProcessingException("Some error with the file");
         }
 
-        return List.of(lmean, rmean, avg);
+        return new PressureResponse(
+            lmean,
+            rmean,
+            avg,
+            List.of(
+                pressurePoints[0], pressurePoints[1], pressurePoints[2], pressurePoints[3], pressurePoints[4],
+                pressurePoints[5], pressurePoints[6], pressurePoints[7], pressurePoints[8], pressurePoints[9]
+            )
+        );
     }
 }

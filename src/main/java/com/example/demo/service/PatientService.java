@@ -18,16 +18,18 @@ public class PatientService {
 private final PatientRepository patientRepository;
 public PatientService(PatientRepository patientRepository) {this.patientRepository=patientRepository;}
 
-    public PatientResponse processFile(PatientRequest patientRequest)throws IOException{
+    public com.example.demo.dto.PressureResponse processFile(PatientRequest patientRequest)throws IOException{
         MultipartFile file= patientRequest.getFile();
-        List<Double> x= FileProcessingUtil.filProcessor(file);
-        double lmean=x.get(0),rmean=x.get(1),avg=x.get(2);
+        com.example.demo.dto.PressureResponse pressureResponse = FileProcessingUtil.filProcessor(file);
+        double lmean = pressureResponse.getLmean();
+        double rmean = pressureResponse.getRmean();
+        double avg = pressureResponse.getAvg();
         String name= patientRequest.getName();
         String email= patientRequest.getEmail();
         String phoneNumber= patientRequest.getPhoneNumber();
         PatientEntity patient = new PatientEntity(name,email,phoneNumber,lmean,rmean,avg);
         patientRepository.save(patient);
-        return new PatientResponse(lmean,rmean,avg);
+        return pressureResponse;
     }
     public com.example.demo.dto.PatientDetailResponse processExistingUser(String phoneNumber) {
         PatientEntity patient = patientRepository.findByPhoneNumber(phoneNumber);

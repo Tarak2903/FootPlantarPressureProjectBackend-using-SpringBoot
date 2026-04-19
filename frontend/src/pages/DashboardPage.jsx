@@ -1,17 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from 'recharts';
 import { Footprints, ActivitySquare, Search, UploadCloud, File, X, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import footImage from '../assets/foot_image.jpg';
+
+const getFootType = (s) => {
+  if (
+    s[0] >= 50 && s[0] <= 300 &&
+    s[1] >= 20 && s[1] <= 200 &&
+    s[2] >= 40 && s[2] <= 250 &&
+    s[3] >= 40 && s[3] <= 250 &&
+    s[4] >= 50 && s[4] <= 300
+  ) return "Normal";
+
+  if (
+    s[0] >= 100 && s[0] <= 250 &&
+    s[1] >= 200 && s[1] <= 300 &&
+    s[2] >= 100 && s[2] <= 250 &&
+    s[3] >= 100 && s[3] <= 250 &&
+    s[4] >= 100 && s[4] <= 250
+  ) return "Flat";
+
+  if (
+    s[0] >= 250 && s[0] <= 300 &&
+    s[1] >= 100 && s[1] <= 200 &&
+    s[2] >= 150 && s[2] <= 300 &&
+    s[3] >= 100 && s[3] <= 200 &&
+    s[4] >= 100 && s[4] <= 300
+  ) return "Pronated";
+
+  if (
+    s[0] >= 250 && s[0] <= 300 &&
+    s[1] >= 50 && s[1] <= 100 &&
+    s[2] >= 100 && s[2] <= 200 &&
+    s[3] >= 200 && s[3] <= 300 &&
+    s[4] >= 80 && s[4] <= 150
+  ) return "Supinated";
+
+  return "Abnormal";
+};
 
 const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState('search'); // 'search' or 'upload'
   const [patientData, setPatientData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const canvasRef = useRef(null);
 
   // Search State
   const [searchPhone, setSearchPhone] = useState('');
@@ -39,9 +77,13 @@ const DashboardPage = () => {
       const res = await api.get('/patient', {
         params: { phoneNumber: searchPhone }
       });
-      
+
       if (res.data) {
-        setPatientData(res.data);
+        const fallback = [50, 60, 70, 80, 90, 55, 65, 75, 85, 95];
+        setPatientData({
+          ...res.data,
+          maxValues: res.data.maxValues || fallback
+        });
         toast.success('Patient found');
       } else {
         setError('No patient found with this phone number.');
@@ -95,19 +137,21 @@ const DashboardPage = () => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       // Construct a patientDetail response equivalent using the form inputs and the response metrics
       if (res.data) {
+        const fallback = [50, 60, 70, 80, 90, 55, 65, 75, 85, 95];
         setPatientData({
           name: uploadData.name,
           email: uploadData.email,
           phoneNumber: uploadData.phoneNumber,
           lmean: res.data.lmean,
           rmean: res.data.rmean,
-          avg: res.data.avg
+          avg: res.data.avg,
+          maxValues: res.data.maxValues || fallback
         });
         toast.success('Data uploaded and analyzed successfully');
-        
+
         // Reset form
         setUploadData({ name: '', email: '', phoneNumber: '' });
         setFile(null);
@@ -125,32 +169,116 @@ const DashboardPage = () => {
     { name: 'Average', value: patientData.avg, color: '#10b981' }
   ] : [];
 
+  const sensorData = patientData?.maxValues ? [
+    { sensor: "Heel", left: patientData.maxValues[0], right: patientData.maxValues[5] },
+    { sensor: "Midfoot", left: patientData.maxValues[1], right: patientData.maxValues[6] },
+    { sensor: "Forefoot", left: patientData.maxValues[2], right: patientData.maxValues[7] },
+    { sensor: "Toes", left: patientData.maxValues[3], right: patientData.maxValues[8] },
+    { sensor: "Hallux", left: patientData.maxValues[4], right: patientData.maxValues[9] }
+  ] : [];
+
+  let leftType = "N/A";
+  let rightType = "N/A";
+  let overallType = "N/A";
+
+  if (patientData?.maxValues) {
+    const leftFoot = patientData.maxValues.slice(0, 5);
+    const rightFoot = patientData.maxValues.slice(5, 10);
+    leftType = getFootType(leftFoot);
+    rightType = getFootType(rightFoot);
+    overallType = leftType === "Normal" && rightType === "Normal" ? "Normal" : "Abnormal";
+  }
+
+  useEffect(() => {
+    if (patientData && patientData.maxValues && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.src = footImage;
+      img.onload = () => {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw the background image to fit the canvas
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Base image dimensions used for the coordinates
+        const baseWidth = 736;
+        const baseHeight = 736;
+
+        const scaleX = canvas.width / baseWidth;
+        const scaleY = canvas.height / baseHeight;
+
+        const points = [
+          { x: 123, y: 330 }, { x: 270, y: 620 }, { x: 260, y: 200 },
+          { x: 250, y: 500 }, { x: 280, y: 280 },
+          { x: 460, y: 280 }, { x: 470, y: 180 },
+          { x: 460, y: 600 }, { x: 490, y: 480 }, { x: 610, y: 320 }
+        ];
+
+        const sensorLabels = ["Heel", "Midfoot", "Forefoot", "Toes", "Hallux"];
+        const sensorRanges = {
+          Heel: [50, 300],
+          Midfoot: [20, 200],
+          Forefoot: [40, 250],
+          Toes: [40, 250],
+          Hallux: [50, 300]
+        };
+
+        points.forEach((point, index) => {
+          const val = patientData.maxValues[index];
+          let color = "gray";
+
+          if (val !== null && !isNaN(val)) {
+            const label = sensorLabels[index % 5];
+            const [min, max] = sensorRanges[label];
+            if (val >= min && val <= max) color = "green";
+            else color = "red";
+          }
+
+          ctx.beginPath();
+          ctx.arc(point.x * scaleX, point.y * scaleY, 10, 0, 2 * Math.PI, false);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+
+          // Draw the value
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(Math.round(val), point.x * scaleX, point.y * scaleY);
+        });
+      };
+    }
+  }, [patientData]);
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Search existing patient records or upload new plantar pressure data.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Search existing patient records or upload new plantar pressure data.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="flex border-b border-gray-200">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div className="flex border-b border-gray-200 dark:border-slate-700">
           <button
             onClick={() => { setActiveTab('search'); setError(null); }}
-            className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${
-              activeTab === 'search'
-                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
+            className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${activeTab === 'search'
+                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-slate-800/50'
+              }`}
           >
             Search Existing Patient
           </button>
           <button
             onClick={() => { setActiveTab('upload'); setError(null); }}
-            className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${
-              activeTab === 'upload'
-                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
+            className={`flex-1 py-4 px-6 text-sm font-medium transition-colors ${activeTab === 'upload'
+                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-slate-800/50'
+              }`}
           >
             Upload New Data
           </button>
@@ -207,9 +335,9 @@ const DashboardPage = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-2">Plantar Pressure Data File</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Plantar Pressure Data File</label>
                 {!file ? (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:bg-gray-50 transition-colors relative">
+                  <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-12 text-center hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors relative">
                     <input
                       type="file"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -218,18 +346,18 @@ const DashboardPage = () => {
                       required
                     />
                     <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-4 text-sm text-gray-600 font-medium">Click to upload or drag and drop</p>
-                    <p className="mt-1 text-xs text-gray-500">LOG, CSV, TXT up to 10MB</p>
+                    <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 font-medium">Click to upload or drag and drop</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">LOG, CSV, TXT up to 10MB</p>
                   </div>
                 ) : (
-                  <div className="border border-gray-200 rounded-lg p-4 flex items-center justify-between bg-blue-50/50">
+                  <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 flex items-center justify-between bg-blue-50/50 dark:bg-slate-700/50">
                     <div className="flex items-center space-x-4">
-                      <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100">
-                        <File className="h-6 w-6 text-blue-600" />
+                      <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-100 dark:border-slate-600">
+                        <File className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                        <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(2)} KB</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{(file.size / 1024).toFixed(2)} KB</p>
                       </div>
                     </div>
                     <button
@@ -266,10 +394,10 @@ const DashboardPage = () => {
       )}
 
       {!patientData && !error && !loading && (
-        <Card className="border-dashed border-2 bg-gray-50/50">
-          <CardContent className="p-12 flex flex-col items-center justify-center text-gray-500">
-            <ActivitySquare className="h-12 w-12 text-gray-300 mb-4" />
-            <p className="text-lg font-medium text-gray-600">No Patient Data</p>
+        <Card className="border-dashed border-2 bg-gray-50/50 dark:bg-slate-800/30 border-gray-200 dark:border-slate-700">
+          <CardContent className="p-12 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+            <ActivitySquare className="h-12 w-12 text-gray-300 dark:text-slate-600 mb-4" />
+            <p className="text-lg font-medium text-gray-600 dark:text-gray-300">No Patient Data</p>
             <p className="text-sm mt-1 text-center max-w-sm">Use the search or upload functionality above to load plantar pressure analysis records.</p>
           </CardContent>
         </Card>
@@ -278,29 +406,29 @@ const DashboardPage = () => {
       {patientData && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <Card>
-            <CardHeader className="bg-gray-50 border-b border-gray-100">
+            <CardHeader className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-700">
               <CardTitle className="text-lg">Patient Information</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Name</p>
-                  <p className="text-base font-semibold text-gray-900 mt-1">{patientData.name}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">{patientData.name}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Email</p>
-                  <p className="text-base font-semibold text-gray-900 mt-1">{patientData.email}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">{patientData.email}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Phone Number</p>
-                  <p className="text-base font-semibold text-gray-900 mt-1">{patientData.phoneNumber}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone Number</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">{patientData.phoneNumber}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-gradient-to-br from-blue-50 to-white">
+            <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-slate-800 dark:to-slate-900 border-blue-100 dark:border-slate-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -314,7 +442,7 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-red-50 to-white">
+            <Card className="bg-gradient-to-br from-red-50 to-white dark:from-slate-800 dark:to-slate-900 border-red-100 dark:border-slate-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -328,7 +456,7 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-emerald-50 to-white">
+            <Card className="bg-gradient-to-br from-emerald-50 to-white dark:from-slate-800 dark:to-slate-900 border-emerald-100 dark:border-slate-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -351,12 +479,12 @@ const DashboardPage = () => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="opacity-50 dark:opacity-20" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
                     <Tooltip
-                      cursor={{ fill: '#f3f4f6' }}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      cursor={{ fill: '#f3f4f6', opacity: 0.1 }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--tw-colors-slate-800, #1e293b)', color: '#fff' }}
                     />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={80}>
                       {chartData.map((entry, index) => (
@@ -365,6 +493,113 @@ const DashboardPage = () => {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Detailed Sensor Pressure (Line Chart)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={sensorData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                      <XAxis dataKey="sensor" axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280' }} />
+                      <Tooltip
+                        cursor={{ fill: '#f3f4f6' }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="left" name="Left Foot" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                      <Line type="monotone" dataKey="right" name="Right Foot" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Foot Sensor Mapping</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col justify-center items-center">
+                <canvas
+                  ref={canvasRef}
+                  width={400}
+                  height={400}
+                  className="bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg shadow-inner mb-4"
+                />
+                <div className="flex space-x-6 text-sm font-medium">
+                  <div className="flex items-center">
+                    <span className="w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+                    <span className="text-gray-600 dark:text-gray-300">Normal</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+                    <span className="text-gray-600 dark:text-gray-300">Abnormal</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-slate-800 dark:to-slate-900">
+              <CardContent className="p-6">
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Left Foot Type</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{leftType}</h3>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-indigo-50 to-white dark:from-slate-800 dark:to-slate-900">
+              <CardContent className="p-6">
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Right Foot Type</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{rightType}</h3>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-slate-800 dark:to-slate-900">
+              <CardContent className="p-6">
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Overall Condition</p>
+                  <h3 className={`text-2xl font-bold mt-2 ${overallType === 'Normal' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{overallType}</h3>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sensor Value Data</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-slate-800/50 border-b border-gray-200 dark:border-slate-700">
+                    <tr>
+                      <th className="px-6 py-4 font-medium">Sensor</th>
+                      <th className="px-6 py-4 font-medium text-blue-600 dark:text-blue-400">Left Foot</th>
+                      <th className="px-6 py-4 font-medium text-red-600 dark:text-red-400">Right Foot</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700/50">
+                    {sensorData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-200">{row.sensor}</td>
+                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{row.left.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{row.right.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
