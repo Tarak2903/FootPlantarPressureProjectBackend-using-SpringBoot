@@ -23,14 +23,14 @@ export const AuthProvider = ({ children }) => {
   const login = async (userName, password, role = 'STAFF') => {
     try {
       const response = await api.post('/auth/login', { userName, password });
-      const { token } = response.data;
+      const { token, role: returnedRole } = response.data;
+      
+      const finalRole = returnedRole || role; // fallback to default if not returned
       
       // Save token and minimal user info
       localStorage.setItem('token', token);
       
-      // Since login response only gives token and time, we mock user details for context
-      // Alternatively, we could fetch user profile here if the API supported it
-      const userData = { userName, role };
+      const userData = { userName, role: finalRole };
       localStorage.setItem('user', JSON.stringify(userData));
       
       setToken(token);

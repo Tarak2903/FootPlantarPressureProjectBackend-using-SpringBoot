@@ -9,11 +9,13 @@ import java.time.LocalDateTime;
 public class UserLoginResponse {
 
     private String token;
+    private String role;
     LocalDateTime time;
 
-   public  UserLoginResponse(String token){
+   public UserLoginResponse(String token, String role){
         this.token=token;
-        time=LocalDateTime.now();
+        this.role=role;
+        this.time=LocalDateTime.now();
     }
 
 }

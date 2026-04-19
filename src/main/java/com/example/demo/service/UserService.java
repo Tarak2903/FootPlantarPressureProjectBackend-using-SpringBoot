@@ -50,4 +50,8 @@ public class UserService {
         return  userRepository.findAll();
     }
 
+    public UserEntity getUserByUserName(String userName) {
+        return userRepository.findByUserName(userName);
+    }
+
 }

@@ -5,13 +5,11 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
-// Pages
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import DashboardPage from './pages/DashboardPage';
-import UploadPage from './pages/UploadPage';
-import SearchPage from './pages/SearchPage';
 import ProfilePage from './pages/ProfilePage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 function App() {
   return (
@@ -25,8 +23,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/upload" element={<UploadPage />} />
-              <Route path="/search" element={<SearchPage />} />
+              <Route path="/admin" element={<AdminDashboardPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>

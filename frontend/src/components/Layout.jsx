@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { Activity, Upload, Search, User, LogOut, Menu } from 'lucide-react';
+import { Activity, User, LogOut, Menu, ShieldAlert } from 'lucide-react';
 
 const Layout = () => {
   const { user, logout } = useContext(AuthContext);
@@ -14,8 +14,7 @@ const Layout = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: Activity },
-    { name: 'Upload Data', path: '/upload', icon: Upload },
-    { name: 'Search Data', path: '/search', icon: Search },
+    ...(user?.role === 'ADMIN' ? [{ name: 'Admin Panel', path: '/admin', icon: ShieldAlert }] : []),
     { name: 'Profile', path: '/profile', icon: User },
   ];
 
