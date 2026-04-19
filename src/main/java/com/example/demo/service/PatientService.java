@@ -29,12 +29,10 @@ public PatientService(PatientRepository patientRepository) {this.patientReposito
         patientRepository.save(patient);
         return new PatientResponse(lmean,rmean,avg);
     }
-    public PatientResponse processExistingUser(String email){
-        PatientEntity patient= patientRepository.findByEmail(email);
-        if(patient==null)throw new PatientNotFoundException("No data Exists for given email");
-
-        return new PatientResponse(patient.getLmean(),patient.getRmean(),patient.getAvg());
-
+    public com.example.demo.dto.PatientDetailResponse processExistingUser(String phoneNumber) {
+        PatientEntity patient = patientRepository.findByPhoneNumber(phoneNumber);
+        if(patient == null) throw new PatientNotFoundException("No data exists for given phone number");
+        return new com.example.demo.dto.PatientDetailResponse(patient.getName(), patient.getEmail(), patient.getPhoneNumber(), patient.getLmean(), patient.getRmean(), patient.getAvg());
     }
 
 }

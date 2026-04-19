@@ -1,11 +1,13 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.PatientRequest;
+import com.example.demo.dto.PatientDetailResponse;
 import com.example.demo.dto.PatientResponse;
 import com.example.demo.service.PatientService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.example.demo.service.PatientService;
 
 import java.io.IOException;
 
@@ -16,8 +18,8 @@ public class PatientController {
 
     public PatientController(PatientService patientService){this.patientService=patientService;}
     @GetMapping
-    public ResponseEntity<PatientResponse> getExistingPatient(@RequestParam  String email){
-        return new ResponseEntity<>(patientService.processExistingUser(email), HttpStatus.OK);
+    public ResponseEntity<PatientDetailResponse> getExistingPatient(@RequestParam String phoneNumber) {
+        return new ResponseEntity<>(patientService.processExistingUser(phoneNumber), HttpStatus.OK);
     }
 
     @PostMapping
