@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from 'recharts';
-import { Footprints, ActivitySquare, Search, UploadCloud, File, X, AlertCircle, FileDown } from 'lucide-react';
+import { Footprints, ActivitySquare, Search, UploadCloud, File, X, AlertCircle, FileDown, Mail } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import html2canvas from 'html2canvas-pro';
@@ -54,6 +54,7 @@ const DashboardPage = () => {
   const canvasRef = useRef(null);
   const reportRef = useRef(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
 
   // Search State
   const [searchPhone, setSearchPhone] = useState('');
@@ -260,84 +261,127 @@ const DashboardPage = () => {
     }
   }, [patientData]);
 
+  const generateReportPdfBlob = async () => {
+    if (!reportRef.current || !patientData) {
+      throw new Error('No report to export');
+    }
+    reportRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+
+    const liveRoot = reportRef.current;
+    const canvas = await html2canvas(liveRoot, {
+      scale: 1.5,
+      useCORS: true,
+      allowTaint: false,
+      foreignObjectRendering: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      imageTimeout: 20000,
+      ignoreElements: (el) =>
+        el instanceof HTMLElement && el.classList.contains('recharts-tooltip-wrapper'),
+      onclone(clonedDoc) {
+        const cloneRoot = clonedDoc.querySelector('[data-pdf-report]');
+        if (!cloneRoot) return;
+        cloneRoot.querySelector('[data-pdf-exclude-bar]')?.remove();
+        const liveCanvases = liveRoot.querySelectorAll('canvas');
+        const cloneCanvases = cloneRoot.querySelectorAll('canvas');
+        liveCanvases.forEach((liveCanvas, i) => {
+          const placeholder = cloneCanvases[i];
+          if (!placeholder?.parentNode) return;
+          try {
+            const url = liveCanvas.toDataURL('image/png');
+            const imgEl = clonedDoc.createElement('img');
+            imgEl.src = url;
+            imgEl.width = liveCanvas.width;
+            imgEl.height = liveCanvas.height;
+            imgEl.style.width = `${liveCanvas.width}px`;
+            imgEl.style.height = `${liveCanvas.height}px`;
+            placeholder.parentNode.replaceChild(imgEl, placeholder);
+          } catch {
+            /* keep cloned canvas */
+          }
+        });
+      },
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+    const pageWidth =
+      typeof pdf.internal.pageSize.getWidth === 'function'
+        ? pdf.internal.pageSize.getWidth()
+        : pdf.internal.pageSize.width;
+    const pageHeight =
+      typeof pdf.internal.pageSize.getHeight === 'function'
+        ? pdf.internal.pageSize.getHeight()
+        : pdf.internal.pageSize.height;
+    const marginMm = 10;
+    const contentWidth = pageWidth - 2 * marginMm;
+    const contentHeight = pageHeight - 2 * marginMm;
+    const imgWidth = contentWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let y = 0;
+    if (imgHeight <= contentHeight) {
+      pdf.addImage(imgData, 'JPEG', marginMm, marginMm, imgWidth, imgHeight);
+    } else {
+      while (y < imgHeight) {
+        if (y > 0) pdf.addPage('a4', 'p');
+        pdf.addImage(imgData, 'JPEG', marginMm, marginMm - y, imgWidth, imgHeight);
+        y += contentHeight;
+      }
+    }
+    const safeName = String(patientData.phoneNumber || 'patient').replace(/[^\w.-]+/g, '_');
+    const filename = `plantar-pressure-report-${safeName}.pdf`;
+    const blob = pdf.output('blob');
+    return { blob, filename };
+  };
+
   const handleDownloadPdf = async () => {
     if (!reportRef.current || !patientData) return;
     setPdfLoading(true);
     try {
-      reportRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
-      await new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      });
-
-      const liveRoot = reportRef.current;
-      const canvas = await html2canvas(liveRoot, {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: false,
-        foreignObjectRendering: false,
-        backgroundColor: '#ffffff',
-        logging: false,
-        imageTimeout: 20000,
-        ignoreElements: (el) =>
-          el instanceof HTMLElement && el.classList.contains('recharts-tooltip-wrapper'),
-        onclone(clonedDoc) {
-          const cloneRoot = clonedDoc.querySelector('[data-pdf-report]');
-          if (!cloneRoot) return;
-          cloneRoot.querySelector('[data-pdf-exclude-bar]')?.remove();
-          const liveCanvases = liveRoot.querySelectorAll('canvas');
-          const cloneCanvases = cloneRoot.querySelectorAll('canvas');
-          liveCanvases.forEach((liveCanvas, i) => {
-            const placeholder = cloneCanvases[i];
-            if (!placeholder?.parentNode) return;
-            try {
-              const url = liveCanvas.toDataURL('image/png');
-              const imgEl = clonedDoc.createElement('img');
-              imgEl.src = url;
-              imgEl.width = liveCanvas.width;
-              imgEl.height = liveCanvas.height;
-              imgEl.style.width = `${liveCanvas.width}px`;
-              imgEl.style.height = `${liveCanvas.height}px`;
-              placeholder.parentNode.replaceChild(imgEl, placeholder);
-            } catch {
-              /* keep cloned canvas */
-            }
-          });
-        },
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-      const pageWidth =
-        typeof pdf.internal.pageSize.getWidth === 'function'
-          ? pdf.internal.pageSize.getWidth()
-          : pdf.internal.pageSize.width;
-      const pageHeight =
-        typeof pdf.internal.pageSize.getHeight === 'function'
-          ? pdf.internal.pageSize.getHeight()
-          : pdf.internal.pageSize.height;
-      const marginMm = 10;
-      const contentWidth = pageWidth - 2 * marginMm;
-      const contentHeight = pageHeight - 2 * marginMm;
-      const imgWidth = contentWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let y = 0;
-      if (imgHeight <= contentHeight) {
-        pdf.addImage(imgData, 'JPEG', marginMm, marginMm, imgWidth, imgHeight);
-      } else {
-        while (y < imgHeight) {
-          if (y > 0) pdf.addPage('a4', 'p');
-          pdf.addImage(imgData, 'JPEG', marginMm, marginMm - y, imgWidth, imgHeight);
-          y += contentHeight;
-        }
-      }
-      const safeName = String(patientData.phoneNumber || 'patient').replace(/[^\w.-]+/g, '_');
-      pdf.save(`plantar-pressure-report-${safeName}.pdf`);
+      const { blob, filename } = await generateReportPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       toast.success('PDF downloaded');
     } catch (err) {
       console.error('PDF export failed:', err);
       toast.error('Could not create PDF. Try again.');
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  const handleSendReportEmail = async () => {
+    if (!patientData?.phoneNumber) {
+      toast.error('Missing patient phone number');
+      return;
+    }
+    if (!patientData?.email) {
+      toast.error('Patient has no email address on file');
+      return;
+    }
+    setEmailSending(true);
+    try {
+      const { blob, filename } = await generateReportPdfBlob();
+      const formData = new FormData();
+      formData.append('phoneNumber', patientData.phoneNumber);
+      formData.append('file', blob, filename);
+      await api.post('/patient/report/email', formData);
+      toast.success('Report sent to patient email');
+    } catch (err) {
+      if (!err.response) {
+        toast.error('Could not send report');
+      }
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -491,8 +535,26 @@ const DashboardPage = () => {
 
       {patientData && (
         <>
-          <div className="flex justify-end">
-            <Button type="button" variant="secondary" onClick={handleDownloadPdf} isLoading={pdfLoading} className="shrink-0">
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleSendReportEmail}
+              isLoading={emailSending}
+              disabled={pdfLoading}
+              className="shrink-0"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Send report to patient
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleDownloadPdf}
+              isLoading={pdfLoading}
+              disabled={emailSending}
+              className="shrink-0"
+            >
               <FileDown className="w-4 h-4 mr-2" />
               Download PDF
             </Button>

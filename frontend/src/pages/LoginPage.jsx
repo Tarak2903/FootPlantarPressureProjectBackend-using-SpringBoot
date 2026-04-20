@@ -7,7 +7,7 @@ import { Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
-  const [userName, setUserName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('STAFF');
   const [loading, setLoading] = useState(false);
@@ -16,13 +16,13 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!userName || !password) {
+    if (!email || !password) {
       toast.error('Please fill in all fields');
       return;
     }
 
     setLoading(true);
-    const success = await login(userName, password, role);
+    const success = await login(email, password, role);
     setLoading(false);
 
     if (success) {
@@ -71,12 +71,12 @@ const LoginPage = () => {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <Input
-              label="Username"
-              type="text"
+              label="Email"
+              type="email"
               required
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder="Enter your username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
             />
 
             <Input

@@ -16,6 +16,9 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => {
@@ -65,6 +68,9 @@ api.interceptors.response.use(
         // Internal Server Error
         const serverErrorMsg = error.response.data?.message || 'Something went wrong on the server.';
         toast.error(serverErrorMsg);
+        break;
+      case 503:
+        toast.error(error.response.data?.message || 'Service unavailable. Try again later.');
         break;
       default:
         const defaultMsg = error.response.data?.message || 'An unexpected error occurred.';

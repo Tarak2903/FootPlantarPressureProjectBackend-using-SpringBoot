@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.ConstraintViolationException;
 
 import java.sql.SQLIntegrityConstraintViolationException;
@@ -19,6 +20,12 @@ public class GlobalExceptionHandler {
     private ResponseEntity<ErrorResponse> existingUserConflict(LogicException ex ){
         return new ResponseEntity<>( new ErrorResponse(ex.getMessage()),
                 HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    private ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+        String msg = ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString();
+        return new ResponseEntity<>(new ErrorResponse(msg), ex.getStatusCode());
     }
 
     @ExceptionHandler(BadCredentialsException.class)

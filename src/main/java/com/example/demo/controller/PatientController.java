@@ -2,14 +2,15 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.PatientRequest;
 import com.example.demo.dto.PatientDetailResponse;
-import com.example.demo.dto.PatientResponse;
 import com.example.demo.service.PatientService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.example.demo.service.PatientService;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/patient")
@@ -30,5 +31,14 @@ public class PatientController {
 
     @GetMapping("/h")
     public String getHello(){return "Lesgoooooo";}
+
+    @PostMapping(value = "/report/email", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> sendReportToPatientEmail(
+            @RequestParam String phoneNumber,
+            @RequestParam("file") MultipartFile file
+    ) {
+        patientService.sendReportPdfToPatient(phoneNumber, file);
+        return new ResponseEntity<>(Map.of("message", "Report sent to the patient's email on file."), HttpStatus.OK);
+    }
 
 }

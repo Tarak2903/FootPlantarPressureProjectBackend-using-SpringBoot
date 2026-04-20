@@ -1,8 +1,7 @@
 import React, { useContext } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { AuthContext } from '../context/AuthContext';
-import { User, Mail, Shield, Key } from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { User, Mail, Shield } from 'lucide-react';
 
 const ProfilePage = () => {
   const { user } = useContext(AuthContext);
@@ -35,32 +34,20 @@ const ProfilePage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block">Username</label>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block">Email</label>
                 <div className="mt-1 flex items-center text-gray-900 dark:text-white">
-                  <User className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
-                  {user?.userName || 'N/A'}
+                  <Mail className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                  {user?.email || user?.userName || 'N/A'}
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block">Email</label>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block">Role</label>
                 <div className="mt-1 flex items-center text-gray-900 dark:text-white">
-                  <Mail className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
-                  Not provided
+                  <Shield className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                  {user?.role || 'STAFF'}
                 </div>
               </div>
-            </div>
-            
-            <div className="pt-6 border-t border-gray-100 dark:border-slate-700 mt-6 flex gap-3">
-               {/* As per backend, standard users don't have update profile APIs in UserController yet.
-                   We mock the disabled button for now. */}
-               <Button disabled className="opacity-50 cursor-not-allowed">
-                 Update Profile
-               </Button>
-               <Button variant="ghost">
-                 <Key className="w-4 h-4 mr-2" />
-                 Change Password
-               </Button>
             </div>
           </div>
         </CardContent>
