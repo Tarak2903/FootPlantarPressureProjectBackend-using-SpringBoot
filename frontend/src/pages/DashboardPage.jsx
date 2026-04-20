@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from 'recharts';
-import { Footprints, ActivitySquare, Search, UploadCloud, File, X, AlertCircle } from 'lucide-react';
+import { Footprints, ActivitySquare, Search, UploadCloud, File, X, AlertCircle, FileDown } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import html2canvas from 'html2canvas-pro';
+import { jsPDF } from 'jspdf';
 import footImage from '../assets/foot_image.jpg';
 
 const getFootType = (s) => {
@@ -50,6 +52,8 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const canvasRef = useRef(null);
+  const reportRef = useRef(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // Search State
   const [searchPhone, setSearchPhone] = useState('');
@@ -194,6 +198,7 @@ const DashboardPage = () => {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.src = footImage;
       img.onload = () => {
         // Clear canvas
@@ -254,6 +259,87 @@ const DashboardPage = () => {
       };
     }
   }, [patientData]);
+
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current || !patientData) return;
+    setPdfLoading(true);
+    try {
+      reportRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+
+      const liveRoot = reportRef.current;
+      const canvas = await html2canvas(liveRoot, {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: false,
+        foreignObjectRendering: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 20000,
+        ignoreElements: (el) =>
+          el instanceof HTMLElement && el.classList.contains('recharts-tooltip-wrapper'),
+        onclone(clonedDoc) {
+          const cloneRoot = clonedDoc.querySelector('[data-pdf-report]');
+          if (!cloneRoot) return;
+          cloneRoot.querySelector('[data-pdf-exclude-bar]')?.remove();
+          const liveCanvases = liveRoot.querySelectorAll('canvas');
+          const cloneCanvases = cloneRoot.querySelectorAll('canvas');
+          liveCanvases.forEach((liveCanvas, i) => {
+            const placeholder = cloneCanvases[i];
+            if (!placeholder?.parentNode) return;
+            try {
+              const url = liveCanvas.toDataURL('image/png');
+              const imgEl = clonedDoc.createElement('img');
+              imgEl.src = url;
+              imgEl.width = liveCanvas.width;
+              imgEl.height = liveCanvas.height;
+              imgEl.style.width = `${liveCanvas.width}px`;
+              imgEl.style.height = `${liveCanvas.height}px`;
+              placeholder.parentNode.replaceChild(imgEl, placeholder);
+            } catch {
+              /* keep cloned canvas */
+            }
+          });
+        },
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+      const pageWidth =
+        typeof pdf.internal.pageSize.getWidth === 'function'
+          ? pdf.internal.pageSize.getWidth()
+          : pdf.internal.pageSize.width;
+      const pageHeight =
+        typeof pdf.internal.pageSize.getHeight === 'function'
+          ? pdf.internal.pageSize.getHeight()
+          : pdf.internal.pageSize.height;
+      const marginMm = 10;
+      const contentWidth = pageWidth - 2 * marginMm;
+      const contentHeight = pageHeight - 2 * marginMm;
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let y = 0;
+      if (imgHeight <= contentHeight) {
+        pdf.addImage(imgData, 'JPEG', marginMm, marginMm, imgWidth, imgHeight);
+      } else {
+        while (y < imgHeight) {
+          if (y > 0) pdf.addPage('a4', 'p');
+          pdf.addImage(imgData, 'JPEG', marginMm, marginMm - y, imgWidth, imgHeight);
+          y += contentHeight;
+        }
+      }
+      const safeName = String(patientData.phoneNumber || 'patient').replace(/[^\w.-]+/g, '_');
+      pdf.save(`plantar-pressure-report-${safeName}.pdf`);
+      toast.success('PDF downloaded');
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      toast.error('Could not create PDF. Try again.');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -404,7 +490,18 @@ const DashboardPage = () => {
       )}
 
       {patientData && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
+          <div className="flex justify-end">
+            <Button type="button" variant="secondary" onClick={handleDownloadPdf} isLoading={pdfLoading} className="shrink-0">
+              <FileDown className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+          </div>
+          <div
+            ref={reportRef}
+            data-pdf-report
+            className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          >
           <Card>
             <CardHeader className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-700">
               <CardTitle className="text-lg">Patient Information</CardTitle>
@@ -427,75 +524,77 @@ const DashboardPage = () => {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-slate-800 dark:to-slate-900 border-blue-100 dark:border-slate-700">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6" data-pdf-mean-stats>
+            <Card className="bg-gradient-to-br from-blue-600 to-blue-800 dark:from-blue-700 dark:to-blue-950 border-blue-500/30">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Left Mean</p>
-                    <h3 className="text-3xl font-bold text-gray-900 mt-2">{patientData.lmean?.toFixed(2) || '0.00'}</h3>
+                    <p className="text-sm font-medium text-white/90">Left Mean</p>
+                    <h3 className="text-3xl font-bold text-white mt-2">{patientData.lmean?.toFixed(2) || '0.00'}</h3>
                   </div>
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <Footprints className="h-6 w-6 text-blue-600" />
+                  <div className="p-3 bg-white/20 rounded-lg">
+                    <Footprints className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-red-50 to-white dark:from-slate-800 dark:to-slate-900 border-red-100 dark:border-slate-700">
+            <Card className="bg-gradient-to-br from-red-600 to-red-800 dark:from-red-700 dark:to-red-950 border-red-500/30">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Right Mean</p>
-                    <h3 className="text-3xl font-bold text-gray-900 mt-2">{patientData.rmean?.toFixed(2) || '0.00'}</h3>
+                    <p className="text-sm font-medium text-white/90">Right Mean</p>
+                    <h3 className="text-3xl font-bold text-white mt-2">{patientData.rmean?.toFixed(2) || '0.00'}</h3>
                   </div>
-                  <div className="p-3 bg-red-100 rounded-lg">
-                    <Footprints className="h-6 w-6 text-red-600" />
+                  <div className="p-3 bg-white/20 rounded-lg">
+                    <Footprints className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-emerald-50 to-white dark:from-slate-800 dark:to-slate-900 border-emerald-100 dark:border-slate-700">
+            <Card className="bg-gradient-to-br from-emerald-600 to-emerald-800 dark:from-emerald-700 dark:to-emerald-950 border-emerald-500/30">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Average</p>
-                    <h3 className="text-3xl font-bold text-gray-900 mt-2">{patientData.avg?.toFixed(2) || '0.00'}</h3>
+                    <p className="text-sm font-medium text-white/90">Average</p>
+                    <h3 className="text-3xl font-bold text-white mt-2">{patientData.avg?.toFixed(2) || '0.00'}</h3>
                   </div>
-                  <div className="p-3 bg-emerald-100 rounded-lg">
-                    <ActivitySquare className="h-6 w-6 text-emerald-600" />
+                  <div className="p-3 bg-white/20 rounded-lg">
+                    <ActivitySquare className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Pressure Distribution Graph</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="opacity-50 dark:opacity-20" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
-                    <Tooltip
-                      cursor={{ fill: '#f3f4f6', opacity: 0.1 }}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--tw-colors-slate-800, #1e293b)', color: '#fff' }}
-                    />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={80}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <div data-pdf-exclude-bar className="contents">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pressure Distribution Graph</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="opacity-50 dark:opacity-20" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
+                      <Tooltip
+                        cursor={{ fill: '#f3f4f6', opacity: 0.1 }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--tw-colors-slate-800, #1e293b)', color: '#fff' }}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={80}>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
@@ -603,7 +702,8 @@ const DashboardPage = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
